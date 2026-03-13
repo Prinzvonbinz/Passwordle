@@ -5,146 +5,175 @@
 <title>Passwordle</title>
 
 <style>
-body{
-font-family:Arial;
-text-align:center;
-background:#111;
+html,body{
+margin:0;
+padding:0;
+overflow:hidden;
+background:#0f0f0f;
 color:white;
-transition:0.3s;
+font-family:sans-serif;
+height:100%;
+display:flex;
+justify-content:center;
+align-items:center;
+touch-action:none;
 }
 
-.light{
-background:#f4f4f4;
-color:black;
-}
-
-h1{
-margin-top:10px;
+#game{
+position:relative;
+width:min(90vmin,500px);
+height:min(90vmin,500px);
 }
 
 #grid{
-width:300px;
-height:300px;
-margin:20px auto;
+width:100%;
+height:100%;
 display:grid;
 grid-template-columns:repeat(3,1fr);
-gap:25px;
+grid-template-rows:repeat(3,1fr);
 }
 
 .dot{
-width:60px;
-height:60px;
+width:28%;
+height:28%;
 border-radius:50%;
-background:#555;
+background:#333;
 margin:auto;
-cursor:pointer;
-transition:0.2s;
 }
 
-.correct{background:#4caf50;}
-.wrongpos{background:#ffc107;}
-.wrong{background:#888;}
+.correct{background:#4caf50}
+.wrongpos{background:#ffc107}
+.wrong{background:#555}
 
-#lineCanvas{
+canvas{
 position:absolute;
-left:50%;
-transform:translateX(-50%);
+top:0;
+left:0;
+width:100%;
+height:100%;
 pointer-events:none;
 }
 
-button{
-padding:10px 15px;
-margin:5px;
-border:none;
-border-radius:6px;
-cursor:pointer;
+#win{
+position:fixed;
+inset:0;
+background:#000c;
+display:none;
+align-items:center;
+justify-content:center;
+flex-direction:column;
+text-align:center;
 }
 
-#win{
-display:none;
+#win button{
 margin-top:20px;
+padding:12px 25px;
+font-size:16px;
+border:none;
+border-radius:8px;
+background:#4caf50;
+color:white;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Passwordle</h1>
-
-<canvas id="lineCanvas" width="300" height="300"></canvas>
-
+<div id="game">
+<canvas id="line"></canvas>
 <div id="grid"></div>
-
-<div>
-<button onclick="submitGuess()">Check</button>
-<button onclick="clearGuess()">Reset</button>
-<button onclick="restart()">Neues Spiel</button>
-<button onclick="toggleMode()">Dark / Light</button>
 </div>
 
-<p>Versuche: <span id="tries">0</span></p>
-<p>Zeit: <span id="time">0</span>s</p>
-
 <div id="win">
-<h2>Gewonnen!</h2>
+<h1>Gewonnen</h1>
 <p id="stats"></p>
-<p id="highscore"></p>
+<button onclick="location.reload()">Neustart</button>
 </div>
 
 <script>
 
 const grid=document.getElementById("grid")
-const canvas=document.getElementById("lineCanvas")
+const canvas=document.getElementById("line")
 const ctx=canvas.getContext("2d")
 
-let pattern=[]
 let guess=[]
 let tries=0
-
-let startTime=Date.now()
+let start=Date.now()
 
 function randomPattern(){
-
-let length=Math.floor(Math.random()*4)+4
-let numbers=[0,1,2,3,4,5,6,7,8]
-
-numbers.sort(()=>Math.random()-0.5)
-
-return numbers.slice(0,length)
-
+let len=Math.floor(Math.random()*3)+4
+let arr=[0,1,2,3,4,5,6,7,8].sort(()=>Math.random()-0.5)
+return arr.slice(0,len)
 }
 
-pattern=randomPattern()
+let pattern=randomPattern()
 
 for(let i=0;i<9;i++){
-
 let d=document.createElement("div")
 d.className="dot"
 d.dataset.id=i
-
-d.onclick=()=>selectDot(i,d)
-
 grid.appendChild(d)
-
 }
 
-function selectDot(i,el){
+function resizeCanvas(){
+canvas.width=grid.clientWidth
+canvas.height=grid.clientHeight
+}
+resizeCanvas()
+window.onresize=resizeCanvas
 
-if(guess.includes(i))return
+let drawing=false
 
+grid.addEventListener("pointerdown",startDraw)
+grid.addEventListener("pointermove",drawMove)
+window.addEventListener("pointerup",endDraw)
+
+function startDraw(e){
+drawing=true
+addDot(e)
+}
+
+function drawMove(e){
+if(!drawing) return
+addDot(e)
+}
+
+function endDraw(){
+drawing=false
+}
+
+function addDot(e){
+
+let dots=[...document.querySelectorAll(".dot")]
+
+dots.forEach((dot,i)=>{
+
+let r=dot.getBoundingClientRect()
+
+if(
+e.clientX>r.left &&
+e.clientX<r.right &&
+e.clientY>r.top &&
+e.clientY<r.bottom
+){
+
+if(!guess.includes(i)){
 guess.push(i)
-
-drawLine()
-
-el.style.background="#2196f3"
+drawLines()
+check()
+}
 
 }
 
-function drawLine(){
+})
 
-ctx.clearRect(0,0,300,300)
+}
 
-ctx.lineWidth=5
+function drawLines(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+ctx.lineWidth=6
 ctx.strokeStyle="#2196f3"
 
 ctx.beginPath()
@@ -152,12 +181,11 @@ ctx.beginPath()
 guess.forEach((g,i)=>{
 
 let dot=document.querySelectorAll(".dot")[g]
+let r=dot.getBoundingClientRect()
+let gr=grid.getBoundingClientRect()
 
-let rect=dot.getBoundingClientRect()
-let gridRect=grid.getBoundingClientRect()
-
-let x=rect.left-gridRect.left+30
-let y=rect.top-gridRect.top+30
+let x=r.left-gr.left+r.width/2
+let y=r.top-gr.top+r.height/2
 
 if(i==0) ctx.moveTo(x,y)
 else ctx.lineTo(x,y)
@@ -168,16 +196,9 @@ ctx.stroke()
 
 }
 
-function submitGuess(){
-
-tries++
-document.getElementById("tries").innerText=tries
+function check(){
 
 let dots=document.querySelectorAll(".dot")
-
-dots.forEach(d=>{
-d.classList.remove("correct","wrongpos","wrong")
-})
 
 guess.forEach((g,i)=>{
 
@@ -198,59 +219,18 @@ if(JSON.stringify(guess)==JSON.stringify(pattern)) win()
 
 }
 
-function clearGuess(){
-
-guess=[]
-
-document.querySelectorAll(".dot").forEach(d=>{
-d.style.background=""
-})
-
-ctx.clearRect(0,0,300,300)
-
-}
-
 function win(){
 
-let time=Math.floor((Date.now()-startTime)/1000)
+tries++
 
-document.getElementById("win").style.display="block"
+let time=Math.floor((Date.now()-start)/1000)
 
 document.getElementById("stats").innerText=
-"Zeit: "+time+"s | Versuche: "+tries
+"Zeit: "+time+" Sekunden | Versuche: "+tries
 
-let best=localStorage.getItem("passwordleBest")
-
-if(!best || time<best){
-
-localStorage.setItem("passwordleBest",time)
+document.getElementById("win").style.display="flex"
 
 }
-
-document.getElementById("highscore").innerText=
-"Bestzeit: "+localStorage.getItem("passwordleBest")+"s"
-
-}
-
-function restart(){
-
-location.reload()
-
-}
-
-function toggleMode(){
-
-document.body.classList.toggle("light")
-
-}
-
-setInterval(()=>{
-
-let t=Math.floor((Date.now()-startTime)/1000)
-
-document.getElementById("time").innerText=t
-
-},1000)
 
 </script>
 
