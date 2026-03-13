@@ -5,43 +5,39 @@
 <title>Passwordle</title>
 
 <style>
+
 html,body{
 margin:0;
 overflow:hidden;
 background:#0f0f0f;
-color:white;
 font-family:sans-serif;
 display:flex;
 flex-direction:column;
 align-items:center;
 height:100vh;
+color:white;
 }
 
 #history{
-width:100%;
 display:flex;
 flex-wrap:wrap;
 justify-content:center;
 gap:8px;
 padding:10px;
 max-height:25vh;
-overflow:hidden;
 }
 
 .mini{
-width:70px;
-height:70px;
+width:80px;
+height:80px;
 background:#111;
-position:relative;
 border-radius:8px;
+position:relative;
 }
 
-.miniDot{
-position:absolute;
-width:12px;
-height:12px;
-border-radius:50%;
-background:#444;
+.mini canvas{
+width:100%;
+height:100%;
 }
 
 #game{
@@ -65,10 +61,6 @@ border-radius:50%;
 background:#333;
 margin:auto;
 }
-
-.correct{background:#4caf50}
-.wrongpos{background:#ffc107}
-.wrong{background:#555}
 
 canvas{
 position:absolute;
@@ -97,6 +89,11 @@ border-radius:8px;
 background:#4caf50;
 color:white;
 }
+
+.correct{color:#4caf50}
+.wrongpos{color:#ffc107}
+.wrong{color:#666}
+
 </style>
 </head>
 
@@ -128,8 +125,7 @@ let start=Date.now()
 
 function randomPattern(){
 let arr=[0,1,2,3,4,5,6,7,8]
-arr.sort(()=>Math.random()-0.5)
-return arr
+return arr.sort(()=>Math.random()-0.5)
 }
 
 let pattern=randomPattern()
@@ -185,8 +181,8 @@ drawLines()
 
 })
 
-if(guess.length==9){
-finishAttempt()
+if(guess.length===9){
+setTimeout(finishAttempt,150)
 }
 
 }
@@ -209,7 +205,7 @@ let gr=grid.getBoundingClientRect()
 let x=r.left-gr.left+r.width/2
 let y=r.top-gr.top+r.height/2
 
-if(i==0) ctx.moveTo(x,y)
+if(i===0) ctx.moveTo(x,y)
 else ctx.lineTo(x,y)
 
 })
@@ -226,7 +222,7 @@ let result=[]
 
 guess.forEach((g,i)=>{
 
-if(pattern[i]==g) result.push("correct")
+if(pattern[i]===g) result.push("correct")
 else if(pattern.includes(g)) result.push("wrongpos")
 else result.push("wrong")
 
@@ -234,8 +230,9 @@ else result.push("wrong")
 
 saveMini(guess,result)
 
-if(result.every(r=>r=="correct")){
+if(result.every(r=>r==="correct")){
 win()
+return
 }
 
 resetBoard()
@@ -247,21 +244,49 @@ function saveMini(guess,result){
 let box=document.createElement("div")
 box.className="mini"
 
+let c=document.createElement("canvas")
+c.width=80
+c.height=80
+
+let cctx=c.getContext("2d")
+
+let pos=[
+[20,20],[40,20],[60,20],
+[20,40],[40,40],[60,40],
+[20,60],[40,60],[60,60]
+]
+
+cctx.lineWidth=3
+
 guess.forEach((g,i)=>{
 
-let dot=document.createElement("div")
-dot.className="miniDot "+result[i]
+let [x,y]=pos[g]
 
-let row=Math.floor(g/3)
-let col=g%3
+let color="#666"
 
-dot.style.left=(col*30+20)+"%"
-dot.style.top=(row*30+20)+"%"
+if(result[i]==="correct") color="#4caf50"
+if(result[i]==="wrongpos") color="#ffc107"
 
-box.appendChild(dot)
+cctx.fillStyle=color
+cctx.beginPath()
+cctx.arc(x,y,4,0,Math.PI*2)
+cctx.fill()
+
+if(i>0){
+
+let [px,py]=pos[guess[i-1]]
+
+cctx.strokeStyle=color
+cctx.beginPath()
+cctx.moveTo(px,py)
+cctx.lineTo(x,y)
+cctx.stroke()
+
+}
 
 })
 
+box.appendChild(c)
 history.prepend(box)
 
 }
@@ -271,10 +296,6 @@ function resetBoard(){
 guess=[]
 ctx.clearRect(0,0,canvas.width,canvas.height)
 
-document.querySelectorAll(".dot").forEach(d=>{
-d.className="dot"
-})
-
 }
 
 function win(){
@@ -282,7 +303,7 @@ function win(){
 let time=Math.floor((Date.now()-start)/1000)
 
 document.getElementById("stats").innerText=
-"Zeit: "+time+"s | Versuche: "+tries
+"Zeit: "+time+" Sekunden | Versuche: "+tries
 
 document.getElementById("win").style.display="flex"
 
