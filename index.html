@@ -7,22 +7,47 @@
 <style>
 html,body{
 margin:0;
-padding:0;
 overflow:hidden;
 background:#0f0f0f;
 color:white;
 font-family:sans-serif;
-height:100%;
 display:flex;
-justify-content:center;
+flex-direction:column;
 align-items:center;
-touch-action:none;
+height:100vh;
+}
+
+#history{
+width:100%;
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:8px;
+padding:10px;
+max-height:25vh;
+overflow:hidden;
+}
+
+.mini{
+width:70px;
+height:70px;
+background:#111;
+position:relative;
+border-radius:8px;
+}
+
+.miniDot{
+position:absolute;
+width:12px;
+height:12px;
+border-radius:50%;
+background:#444;
 }
 
 #game{
 position:relative;
-width:min(90vmin,500px);
-height:min(90vmin,500px);
+width:min(80vmin,500px);
+height:min(80vmin,500px);
 }
 
 #grid{
@@ -57,16 +82,14 @@ pointer-events:none;
 #win{
 position:fixed;
 inset:0;
-background:#000c;
+background:#000d;
 display:none;
 align-items:center;
 justify-content:center;
 flex-direction:column;
-text-align:center;
 }
 
-#win button{
-margin-top:20px;
+button{
 padding:12px 25px;
 font-size:16px;
 border:none;
@@ -78,6 +101,8 @@ color:white;
 </head>
 
 <body>
+
+<div id="history"></div>
 
 <div id="game">
 <canvas id="line"></canvas>
@@ -95,15 +120,16 @@ color:white;
 const grid=document.getElementById("grid")
 const canvas=document.getElementById("line")
 const ctx=canvas.getContext("2d")
+const history=document.getElementById("history")
 
 let guess=[]
 let tries=0
 let start=Date.now()
 
 function randomPattern(){
-let len=Math.floor(Math.random()*3)+4
-let arr=[0,1,2,3,4,5,6,7,8].sort(()=>Math.random()-0.5)
-return arr.slice(0,len)
+let arr=[0,1,2,3,4,5,6,7,8]
+arr.sort(()=>Math.random()-0.5)
+return arr
 }
 
 let pattern=randomPattern()
@@ -115,32 +141,25 @@ d.dataset.id=i
 grid.appendChild(d)
 }
 
-function resizeCanvas(){
+function resize(){
 canvas.width=grid.clientWidth
 canvas.height=grid.clientHeight
 }
-resizeCanvas()
-window.onresize=resizeCanvas
+resize()
+window.onresize=resize
 
 let drawing=false
 
-grid.addEventListener("pointerdown",startDraw)
-grid.addEventListener("pointermove",drawMove)
-window.addEventListener("pointerup",endDraw)
-
-function startDraw(e){
+grid.addEventListener("pointerdown",e=>{
 drawing=true
 addDot(e)
-}
+})
 
-function drawMove(e){
-if(!drawing) return
-addDot(e)
-}
+grid.addEventListener("pointermove",e=>{
+if(drawing) addDot(e)
+})
 
-function endDraw(){
-drawing=false
-}
+window.addEventListener("pointerup",()=>drawing=false)
 
 function addDot(e){
 
@@ -160,12 +179,15 @@ e.clientY<r.bottom
 if(!guess.includes(i)){
 guess.push(i)
 drawLines()
-check()
 }
 
 }
 
 })
+
+if(guess.length==9){
+finishAttempt()
+}
 
 }
 
@@ -196,37 +218,71 @@ ctx.stroke()
 
 }
 
-function check(){
+function finishAttempt(){
 
-let dots=document.querySelectorAll(".dot")
+tries++
+
+let result=[]
 
 guess.forEach((g,i)=>{
 
-let dot=dots[g]
-
-if(pattern[i]==g)
-dot.classList.add("correct")
-
-else if(pattern.includes(g))
-dot.classList.add("wrongpos")
-
-else
-dot.classList.add("wrong")
+if(pattern[i]==g) result.push("correct")
+else if(pattern.includes(g)) result.push("wrongpos")
+else result.push("wrong")
 
 })
 
-if(JSON.stringify(guess)==JSON.stringify(pattern)) win()
+saveMini(guess,result)
+
+if(result.every(r=>r=="correct")){
+win()
+}
+
+resetBoard()
+
+}
+
+function saveMini(guess,result){
+
+let box=document.createElement("div")
+box.className="mini"
+
+guess.forEach((g,i)=>{
+
+let dot=document.createElement("div")
+dot.className="miniDot "+result[i]
+
+let row=Math.floor(g/3)
+let col=g%3
+
+dot.style.left=(col*30+20)+"%"
+dot.style.top=(row*30+20)+"%"
+
+box.appendChild(dot)
+
+})
+
+history.prepend(box)
+
+}
+
+function resetBoard(){
+
+guess=[]
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+document.querySelectorAll(".dot").forEach(d=>{
+d.className="dot"
+})
 
 }
 
 function win(){
 
-tries++
-
 let time=Math.floor((Date.now()-start)/1000)
 
 document.getElementById("stats").innerText=
-"Zeit: "+time+" Sekunden | Versuche: "+tries
+"Zeit: "+time+"s | Versuche: "+tries
 
 document.getElementById("win").style.display="flex"
 
